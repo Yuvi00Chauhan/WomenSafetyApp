@@ -5,27 +5,32 @@
     <androidx.drawerlayout.widget.DrawerLayout
         android:id="@+id/drawerLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    <androidx.constraintlayout.widget.ConstraintLayout xmlns:tools="http://schemas.android.com/tools"
-        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".MainActivity">
+        android:fitsSystemWindows="true">
 
-        <fragment
-            android:id="@+id/myNavHostFragment"
-            android:name="androidx.navigation.fragment.NavHostFragment"
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:defaultNavHost="true"
-            app:navGraph="@navigation/navigation" />
+            android:fitsSystemWindows="true"
+            xmlns:tools="http://schemas.android.com/tools"
+            tools:context=".MainActivity">
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <fragment
+                android:id="@+id/myNavHostFragment"
+                android:name="androidx.navigation.fragment.NavHostFragment"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fitsSystemWindows="true"
+                app:defaultNavHost="true"
+                app:navGraph="@navigation/navigation" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
         <com.google.android.material.navigation.NavigationView
             android:id="@+id/navView"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_gravity="start"
+            android:fitsSystemWindows="true"
             app:headerLayout="@layout/nav_header"
             app:menu="@menu/navdrawer_menu" />
     </androidx.drawerlayout.widget.DrawerLayout>

@@ -1,11 +1,12 @@
 package com.shubham.womensafety.guardiandetail
+import GuardianAdapter
 
 import android.os.Bundle
 import android.view.*
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,34 +19,32 @@ class GuardianInfo : Fragment() {
     private lateinit var binding: FragmentGuardianInfoBinding
     private lateinit var model: GuardianInfoViewModel
 
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         binding = DataBindingUtil.inflate(inflater,
-            R.layout.fragment_guardian_info,container,false)
+            R.layout.fragment_guardian_info, container, false)
 
         // Get the view model
-        model = ViewModelProviders.of(this).get(GuardianInfoViewModel::class.java)
+        model = ViewModelProvider(this).get(GuardianInfoViewModel::class.java)
 
         // Specify layout for recycler view
-        val linearLayoutManager = LinearLayoutManager(
-            activity!!, RecyclerView.VERTICAL,false)
+        val linearLayoutManager = LinearLayoutManager(requireContext(), RecyclerView.VERTICAL, false)
         binding.guardianList.layoutManager = linearLayoutManager
 
         // Observe the model
-        model.allGuardians.observe(this, Observer{ guardians->
+        model.allGuardians.observe(viewLifecycleOwner, Observer { guardians ->
             // Data bind the recycler view
             binding.guardianList.adapter = GuardianAdapter(guardians)
         })
 
         binding.addGuardian.setOnClickListener { openAddGuardian() }
 
-        model.showSnackBarEvent.observe(this, Observer {
+        model.showSnackBarEvent.observe(viewLifecycleOwner, Observer {
             if (it == true) {
                 Snackbar.make(
-                    activity!!.findViewById(android.R.id.content),
+                    requireActivity().findViewById(android.R.id.content),
                     getString(R.string.cleared_message),
                     Snackbar.LENGTH_LONG
                 ).show()
@@ -58,19 +57,22 @@ class GuardianInfo : Fragment() {
         return binding.root
     }
 
-    fun openAddGuardian(){
+    private fun openAddGuardian() {
         findNavController().navigate(GuardianInfoDirections.actionGuardianInfoToAddGuardian())
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        inflater?.inflate(R.menu.options_menu, menu)
+        inflater.inflate(R.menu.options_menu, menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item!!.itemId) {
-            R.id.delete_item -> model.onClear()
+        return when (item.itemId) {
+            R.id.delete_item -> {
+                model.onClear()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
     }
 }

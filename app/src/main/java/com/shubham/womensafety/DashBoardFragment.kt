@@ -1,10 +1,12 @@
 package com.shubham.womensafety
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.telephony.SmsManager
 import android.util.Log
@@ -12,11 +14,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.collections.arrayListOf
 import androidx.navigation.findNavController
 import androidx.room.Room
 import com.firebase.ui.auth.AuthUI
@@ -33,7 +39,6 @@ import kotlinx.coroutines.*
 class DashBoardFragment : Fragment() {
 
     private lateinit var binding: FragmentDashBoardBinding
-
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var lastLocation: Location
     private var Latitude: String = ""
@@ -54,8 +59,7 @@ class DashBoardFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity!!)
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
         // Inflate the layout for this fragment
         binding = DataBindingUtil.inflate(
@@ -76,16 +80,16 @@ class DashBoardFragment : Fragment() {
 
         binding.emerButton.setOnClickListener {
             getLocation()
-            if (Longitude.isNullOrBlank() || Longitude.isNullOrEmpty()) {
+            if (Longitude.isBlank()) {
                 Toast.makeText(
-                    activity!!,
+                    requireActivity(),
                     "Click on Location button and try again",
                     Toast.LENGTH_LONG
                 ).show()
             } else {
-                if (ActivityCompat.checkSelfPermission(activity!!, Manifest.permission.SEND_SMS)
+                if (ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.SEND_SMS)
                     != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(activity!!, arrayOf(Manifest.permission.SEND_SMS), PERMISSION_SEND_SMS)
+                    ActivityCompat.requestPermissions(requireActivity(), arrayOf(Manifest.permission.SEND_SMS), PERMISSION_SEND_SMS)
                 } else {
                     uiScope.launch {
                         withContext(Dispatchers.IO) {
@@ -109,11 +113,8 @@ class DashBoardFragment : Fragment() {
         if (requestCode == SIGN_IN_RESULT_CODE) {
             val response = IdpResponse.fromResultIntent(data)
             if (resultCode == Activity.RESULT_OK) {
-                //User successfully signed in
+                // User successfully signed in
             } else {
-                // Sign in failed. If response is null, the user canceled the
-                // sign-in flow using the back button. Otherwise, check
-                // the error code and handle the error.
                 Log.i(TAG, "Sign in unsuccessful ${response?.error?.errorCode}")
             }
         }
@@ -124,7 +125,7 @@ class DashBoardFragment : Fragment() {
             when (authenticationState) {
                 LoginViewModel.AuthenticationState.AUTHENTICATED -> {
                     binding.textView.text =
-                        ("Welcome, " + FirebaseAuth.getInstance().currentUser?.displayName)
+                        ("Welcome, " + FirebaseAuth.getInstance().currentUser ?.displayName)
                 }
                 else -> {
                     launchSignInFlow()
@@ -134,73 +135,68 @@ class DashBoardFragment : Fragment() {
     }
 
     private fun launchSignInFlow() {
-        // Give users the option to sign in / register with their email
-        // If users choose to register with their email,
-        // they will need to create a password as well
         val providers = arrayListOf(
-            AuthUI.IdpConfig.EmailBuilder().build(), AuthUI.IdpConfig.GoogleBuilder().build()
-            //
+            AuthUI.IdpConfig.EmailBuilder().build(),
+            AuthUI.IdpConfig.GoogleBuilder().build()
         )
 
-        // Create and launch sign-in intent.
-        // We listen to the response of this activity with the
-        // SIGN_IN_RESULT_CODE code
         startActivityForResult(
             AuthUI.getInstance().createSignInIntentBuilder().setAvailableProviders(
                 providers
             ).setTheme(R.style.LoginTheme_NoActionBar)
                 .setLogo(R.drawable.women)
-                .build(), DashBoardFragment.SIGN_IN_RESULT_CODE
+                .build(), SIGN_IN_RESULT_CODE
         )
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        if(requestCode == PERMISSION_SEND_SMS){
-            uiScope.launch {
-                withContext(Dispatchers.IO) {
-                    emergencyFun()
+        if (requestCode == PERMISSION_SEND_SMS) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                uiScope.launch {
+                    withContext(Dispatchers.IO) {
+                        emergencyFun()
+                    }
                 }
+            } else {
+                Toast.makeText(requireActivity(), "SMS permission denied", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun getLocation() {
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 lastLocation = location
-                Latitude = (location.latitude).toString()
-                Longitude = (location.longitude).toString()
+                Latitude = location.latitude.toString()
+                Longitude = location.longitude.toString()
             }
         }
     }
 
-
+    @RequiresApi(Build.VERSION_CODES.DONUT)
     private fun emergencyFun() {
-        val db =
-            Room.databaseBuilder(activity!!, GuardianDatabase::class.java, "GuardianDB").build()
+        val db = Room.databaseBuilder(requireActivity(), GuardianDatabase::class.java, "GuardianDB").build()
         val emailList: List<Guardian> = db.guardianDatabaseDao().getEmail()
 
         var maillist: String = ""
         val subject: String = "From Women Safety App"
         val text: String = resources.getString(R.string.problem)
-        val text1 =
-            text.plus("https://www.google.com/maps/search/?api=1&query=$Latitude,$Longitude")
+        val text1 = "$text https://www.google.com/maps/search/?api=1&query=$Latitude,$Longitude"
 
-        emailList.forEach() {
-            maillist = emailList.joinToString(separator = ",") { it -> "${it.guardianEmail}" }
-        }
-        emailList.forEach() {
-            val smsManager = SmsManager.getDefault() as SmsManager
-            smsManager.sendTextMessage("${it.guardianPhoneNo}", null, "$text1", null, null)
+        maillist = emailList.joinToString(separator = ",") { it.guardianEmail }
+
+        emailList.forEach {
+            val smsManager = SmsManager.getDefault()
+            smsManager.sendTextMessage(it.guardianPhoneNo, null, text1, null, null)
         }
 
-        val shareIntent = Intent(Intent.ACTION_SEND)
-
-        shareIntent.setType("message/rfc822")
-            .putExtra(Intent.EXTRA_EMAIL, arrayOf(maillist))
-            .putExtra(Intent.EXTRA_SUBJECT, subject)
-            .putExtra(Intent.EXTRA_TEXT, text1)
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "message/rfc822"
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(maillist))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, text1)
+        }
         startActivity(Intent.createChooser(shareIntent, "Send mail using.."))
     }
-
 }
